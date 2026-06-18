@@ -1,0 +1,62 @@
+# OBS Prompter Studio - Git ignore rules
+
+# Build outputs
+/build/
+/build_x64/
+/build-*/
+/build_*/
+/out/
+/rundir/
+/_deps/
+/.deps/
+!/build-aux/
+!/build-aux/**
+
+# Distribution artifacts
+/dist/
+*.zip
+*.7z
+*.tar.gz
+*.exe
+*.msi
+*.dll
+*.lib
+*.exp
+*.pdb
+*.ilk
+
+# CMake / Ninja / MSBuild generated files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+.cmake/
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+*.sln
+*.ninja
+.ninja_*
+Testing/
+
+# OBS template generated metadata
+/cmake/.CMakeBuildNumber
+*.lock.json
+
+# Local editor and OS files
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.swp
+*.tmp
+*.log
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Keep installer scripts, but ignore generated installer outputs
+!/installer/
+!/installer/*.iss
