@@ -1,7 +1,7 @@
 #define MyAppName "Prompter Studio"
 #define MyAppVersion "1.1.0"
 #define MyAppPublisher "Psicocartoon Studio"
-#define MyAppURL "https://github.com/candelas741/OBS-Prompter-Studio"
+#define MyAppURL "https://github.com/candelas741/Prompter-Studio"
 
 [Setup]
 AppId={{9A77C4C1-64D9-49A1-8C5A-8F16C0B3B8A1}

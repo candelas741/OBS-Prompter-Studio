@@ -111,9 +111,9 @@ The saved state includes text, last TXT file path, selected source, colors, back
 
 ## Support And Source Code
 
-The complete GPL-2.0-or-later source code, issue tracker, and release history are available at [GitHub](https://github.com/candelas741/OBS-Prompter-Studio).
+The complete GPL-2.0-or-later source code, issue tracker, and release history are available at [GitHub](https://github.com/candelas741/Prompter-Studio).
 
-Before reporting a problem, include the OBS log file and the exact Prompter Studio version. Open support requests through [GitHub Issues](https://github.com/candelas741/OBS-Prompter-Studio/issues).
+Before reporting a problem, include the OBS log file and the exact Prompter Studio version. Open support requests through [GitHub Issues](https://github.com/candelas741/Prompter-Studio/issues).
 
 ## Build
 

@@ -53,7 +53,7 @@ echo.
 echo Desarrollado por Psicocartoon Studio.
 echo Proyecto de terceros, no afiliado ni respaldado por OBS Studio.
 echo Codigo fuente y soporte:
-echo https://github.com/candelas741/OBS-Prompter-Studio
+echo https://github.com/candelas741/Prompter-Studio
 echo Licencia: GPL-2.0-or-later. Consulte LICENSE.txt.
 ) > "%PLUGIN_DATA%\README.txt"
 
@@ -65,7 +65,7 @@ echo.
 echo Prompter Studio es un plugin de terceros para OBS Studio.
 echo No esta afiliado ni respaldado por OBS Studio o el OBS Project.
 echo Codigo fuente y soporte:
-echo https://github.com/candelas741/OBS-Prompter-Studio
+echo https://github.com/candelas741/Prompter-Studio
 echo.
 echo INSTALACION ZIP:
 echo 1. Cerrar OBS.

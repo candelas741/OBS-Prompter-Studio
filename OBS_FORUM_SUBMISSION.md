@@ -26,10 +26,10 @@ Prompter Studio adds an in-scene teleprompter source, a private operator preview
 
 ## Source, License, And Support
 
-- Source code: https://github.com/candelas741/OBS-Prompter-Studio
+- Source code: https://github.com/candelas741/Prompter-Studio
 - License: GPL-2.0-or-later
-- Support and bug reports: https://github.com/candelas741/OBS-Prompter-Studio/issues
-- Changelog: https://github.com/candelas741/OBS-Prompter-Studio/blob/main/CHANGELOG.md
+- Support and bug reports: https://github.com/candelas741/Prompter-Studio/issues
+- Changelog: https://github.com/candelas741/Prompter-Studio/blob/main/CHANGELOG.md
 
 ## Third-Party Notice
 

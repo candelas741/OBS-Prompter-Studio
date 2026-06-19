@@ -6,4 +6,4 @@ It is designed for use with OBS Studio, but it is not affiliated with, endorsed 
 
 Source code, issue tracking, and releases are available at:
 
-https://github.com/candelas741/OBS-Prompter-Studio
+https://github.com/candelas741/Prompter-Studio
