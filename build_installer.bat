@@ -3,11 +3,11 @@ setlocal enabledelayedexpansion
 
 set "ROOT=%~dp0"
 set "DIST_DIR=%ROOT%dist"
-set "SETUP_PATH=%DIST_DIR%\OBS-Prompter-Studio-Setup.exe"
+set "SETUP_PATH=%DIST_DIR%\Prompter-Studio-Setup.exe"
 
 cd /d "%ROOT%"
 
-if not exist "%DIST_DIR%\OBS-Prompter-Studio\obs-plugins\64bit\obs-prompter-studio.dll" (
+if not exist "%DIST_DIR%\Prompter-Studio\obs-plugins\64bit\obs-prompter-studio.dll" (
     echo Paquete ZIP/dist no encontrado. Generando primero...
     call "%ROOT%package_zip.bat"
     if errorlevel 1 exit /b 1

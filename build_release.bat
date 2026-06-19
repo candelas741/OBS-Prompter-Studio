@@ -8,11 +8,11 @@ set "DLL_PATH=%BUILD_DIR%\%CONFIG%\obs-prompter-studio.dll"
 
 cd /d "%ROOT%"
 
-echo === OBS Prompter Studio: configurar Release ===
+echo === Prompter Studio: configurar Release ===
 cmake --preset windows-x64
 if errorlevel 1 exit /b 1
 
-echo === OBS Prompter Studio: compilar Release ===
+echo === Prompter Studio: compilar Release ===
 cmake --build --preset windows-x64
 if errorlevel 1 exit /b 1
 

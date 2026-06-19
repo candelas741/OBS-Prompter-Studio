@@ -1,6 +1,8 @@
-# OBS Prompter Studio
+# Prompter Studio
 
-OBS Prompter Studio is a native OBS Studio plugin for Windows that adds a professional teleprompter workflow directly inside OBS.
+Prompter Studio is an independent third-party plugin for OBS Studio on Windows. It adds a professional teleprompter workflow directly inside OBS Studio.
+
+Prompter Studio is not affiliated with, endorsed by, or sponsored by OBS Studio or the OBS Project. See [NOTICE](NOTICE.md) for trademark and attribution information.
 
 It provides:
 
@@ -107,6 +109,12 @@ The saved state includes text, last TXT file path, selected source, colors, back
 - CMake 3.28 or newer
 - Qt and OBS plugin template dependencies
 
+## Support And Source Code
+
+The complete GPL-2.0-or-later source code, issue tracker, and release history are available at [GitHub](https://github.com/candelas741/OBS-Prompter-Studio).
+
+Before reporting a problem, include the OBS log file and the exact Prompter Studio version. Open support requests through [GitHub Issues](https://github.com/candelas741/OBS-Prompter-Studio/issues).
+
 ## Build
 
 From the project root:
@@ -163,13 +171,13 @@ package_zip.bat
 Output:
 
 ```text
-dist\OBS-Prompter-Studio.zip
+dist\Prompter-Studio.zip
 ```
 
 The ZIP contains an OBS-compatible structure:
 
 ```text
-OBS-Prompter-Studio/
+Prompter-Studio/
   obs-plugins/
     64bit/
       obs-prompter-studio.dll
@@ -192,7 +200,7 @@ build_installer.bat
 Output:
 
 ```text
-dist\OBS-Prompter-Studio-Setup.exe
+dist\Prompter-Studio-Setup.exe
 ```
 
 The installer is intended to install directly into the OBS Studio installation folder.
@@ -221,3 +229,7 @@ installer/
 ## License
 
 This project is licensed under GPL-2.0-or-later. See [LICENSE](LICENSE).
+
+## Disclaimer
+
+This is a third-party community plugin. OBS Studio is used here only to describe compatibility; no official affiliation or endorsement is implied.

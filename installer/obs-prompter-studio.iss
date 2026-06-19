@@ -1,7 +1,7 @@
-#define MyAppName "OBS Prompter Studio"
-#define MyAppVersion "1.0.0"
+#define MyAppName "Prompter Studio"
+#define MyAppVersion "1.1.0"
 #define MyAppPublisher "Psicocartoon Studio"
-#define MyAppURL "https://github.com/psicocartoon/obs-prompter-studio"
+#define MyAppURL "https://github.com/candelas741/OBS-Prompter-Studio"
 
 [Setup]
 AppId={{9A77C4C1-64D9-49A1-8C5A-8F16C0B3B8A1}
@@ -16,7 +16,7 @@ DisableProgramGroupPage=yes
 UsePreviousAppDir=no
 AppendDefaultDirName=no
 OutputDir=..\dist
-OutputBaseFilename=OBS-Prompter-Studio-Setup
+OutputBaseFilename=Prompter-Studio-Setup
 Compression=lzma
 SolidCompression=yes
 ArchitecturesAllowed=x64compatible
@@ -32,12 +32,15 @@ Name: "spanish"; MessagesFile: "compiler:Languages\Spanish.isl"
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Files]
-Source: "..\dist\OBS-Prompter-Studio\obs-plugins\64bit\obs-prompter-studio.dll"; DestDir: "{app}\obs-plugins\64bit"; Flags: ignoreversion
-Source: "..\dist\OBS-Prompter-Studio\data\obs-plugins\obs-prompter-studio\*"; DestDir: "{app}\data\obs-plugins\obs-prompter-studio"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\dist\Prompter-Studio\obs-plugins\64bit\obs-prompter-studio.dll"; DestDir: "{app}\obs-plugins\64bit"; Flags: ignoreversion
+Source: "..\dist\Prompter-Studio\data\obs-plugins\obs-prompter-studio\*"; DestDir: "{app}\data\obs-plugins\obs-prompter-studio"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\dist\Prompter-Studio\LICENSE.txt"; DestDir: "{app}\data\obs-plugins\obs-prompter-studio"; Flags: ignoreversion
+Source: "..\dist\Prompter-Studio\NOTICE.txt"; DestDir: "{app}\data\obs-plugins\obs-prompter-studio"; Flags: ignoreversion
+Source: "..\dist\Prompter-Studio\CHANGELOG.txt"; DestDir: "{app}\data\obs-plugins\obs-prompter-studio"; Flags: ignoreversion
 Source: "..\dist\README_INSTALACION.txt"; DestDir: "{app}\data\obs-plugins\obs-prompter-studio"; Flags: ignoreversion
 
 [Icons]
-Name: "{autoprograms}\OBS Prompter Studio - README"; Filename: "{app}\data\obs-plugins\obs-prompter-studio\README_INSTALACION.txt"
+Name: "{autoprograms}\Prompter Studio - README"; Filename: "{app}\data\obs-plugins\obs-prompter-studio\README_INSTALACION.txt"
 
 [Code]
 function InitializeSetup(): Boolean;

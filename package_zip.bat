@@ -6,10 +6,10 @@ set "BUILD_DIR=%ROOT%build_x64"
 set "CONFIG=RelWithDebInfo"
 set "DLL_SOURCE=%BUILD_DIR%\%CONFIG%\obs-prompter-studio.dll"
 set "DIST_DIR=%ROOT%dist"
-set "PACKAGE_ROOT=%DIST_DIR%\OBS-Prompter-Studio"
+set "PACKAGE_ROOT=%DIST_DIR%\Prompter-Studio"
 set "PLUGIN_BIN=%PACKAGE_ROOT%\obs-plugins\64bit"
 set "PLUGIN_DATA=%PACKAGE_ROOT%\data\obs-plugins\obs-prompter-studio"
-set "ZIP_PATH=%DIST_DIR%\OBS-Prompter-Studio.zip"
+set "ZIP_PATH=%DIST_DIR%\Prompter-Studio.zip"
 
 cd /d "%ROOT%"
 
@@ -32,10 +32,14 @@ echo === Copiando data del plugin ===
 xcopy /e /i /y "%ROOT%data" "%PLUGIN_DATA%"
 if errorlevel 1 exit /b 1
 
+copy /y "%ROOT%LICENSE" "%PACKAGE_ROOT%\LICENSE.txt" >nul
+copy /y "%ROOT%NOTICE.md" "%PACKAGE_ROOT%\NOTICE.txt" >nul
+copy /y "%ROOT%CHANGELOG.md" "%PACKAGE_ROOT%\CHANGELOG.txt" >nul
+
 echo === Generando README del plugin ===
 (
-echo OBS Prompter Studio
-echo Version 1.0.0
+echo Prompter Studio
+echo Version 1.1.0
 echo.
 echo Este plugin agrega:
 echo - Fuente OBS: Prompter Source
@@ -47,12 +51,21 @@ echo - Windows 10/11
 echo - OBS Studio 64 bits
 echo.
 echo Desarrollado por Psicocartoon Studio.
+echo Proyecto de terceros, no afiliado ni respaldado por OBS Studio.
+echo Codigo fuente y soporte:
+echo https://github.com/candelas741/OBS-Prompter-Studio
+echo Licencia: GPL-2.0-or-later. Consulte LICENSE.txt.
 ) > "%PLUGIN_DATA%\README.txt"
 
 echo === Generando README de instalacion ===
 (
-echo OBS Prompter Studio - README DE INSTALACION
-echo ===========================================
+echo Prompter Studio - README DE INSTALACION
+echo ========================================
+echo.
+echo Prompter Studio es un plugin de terceros para OBS Studio.
+echo No esta afiliado ni respaldado por OBS Studio o el OBS Project.
+echo Codigo fuente y soporte:
+echo https://github.com/candelas741/OBS-Prompter-Studio
 echo.
 echo INSTALACION ZIP:
 echo 1. Cerrar OBS.
@@ -66,7 +79,7 @@ echo    Ver ^> Paneles/Docks ^> Prompter Studio Vista Privada
 echo.
 echo INSTALACION EXE:
 echo 1. Cerrar OBS.
-echo 2. Ejecutar OBS-Prompter-Studio-Setup.exe como administrador.
+echo 2. Ejecutar Prompter-Studio-Setup.exe como administrador.
 echo 3. Seleccionar la carpeta de OBS si se solicita.
 echo 4. Abrir OBS.
 echo.

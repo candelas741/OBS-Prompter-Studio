@@ -13,7 +13,7 @@ bool obs_module_load(void)
 	obs_register_source(&prompter_source_info);
 	prompter_hotkeys_register();
 	prompter_dock_create();
-	obs_log(LOG_INFO, "OBS Prompter Studio cargado correctamente (version %s)",
+	obs_log(LOG_INFO, "Prompter Studio cargado correctamente (version %s)",
 		PLUGIN_VERSION);
 	return true;
 }
@@ -22,5 +22,5 @@ void obs_module_unload(void)
 {
 	prompter_dock_destroy();
 	prompter_hotkeys_unregister();
-	obs_log(LOG_INFO, "OBS Prompter Studio descargado");
+	obs_log(LOG_INFO, "Prompter Studio descargado");
 }
