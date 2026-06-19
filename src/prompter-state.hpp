@@ -8,6 +8,7 @@
 #include <vector>
 
 enum class PrompterAlign { Left = 0, Center = 1, Right = 2 };
+enum class PresentationMode { ContinuousScroll = 0, Paragraph = 1 };
 
 struct PrompterSnapshot {
 	std::string text;
@@ -26,6 +27,9 @@ struct PrompterSnapshot {
 	double lineSpacing = 1.15;
 	uint32_t width = 1280;
 	uint32_t height = 720;
+	PresentationMode mode = PresentationMode::ContinuousScroll;
+	std::vector<std::string> paragraphs;
+	int currentParagraphIndex = 0;
 	uint64_t version = 1;
 };
 
@@ -52,11 +56,20 @@ public:
 	void manualStep(double delta);
 	void setMirrorHorizontal(bool enabled);
 	void setMirrorVertical(bool enabled);
+	void setPresentationMode(PresentationMode mode);
+	void setCurrentParagraphIndex(int index);
+	void rebuildParagraphs();
+	void nextParagraph();
+	void previousParagraph();
+	void goToFirstParagraph();
+	void goToLastParagraph();
+	std::string getCurrentParagraphText() const;
 
 	std::string sourceName() const;
 	void setSourceName(const std::string &name);
 
 private:
+	void rebuildParagraphsLocked();
 	void touch();
 
 	mutable std::mutex mutex;

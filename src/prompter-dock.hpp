@@ -14,3 +14,5 @@ void prompter_controller_step_forward();
 void prompter_controller_step_backward();
 void prompter_controller_go_to_start();
 void prompter_controller_go_to_end();
+void prompter_controller_next_paragraph();
+void prompter_controller_previous_paragraph();

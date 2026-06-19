@@ -38,6 +38,8 @@ constexpr const char *S_PADDING = "padding";
 constexpr const char *S_LINE_SPACING = "line_spacing";
 constexpr const char *S_WIDTH = "width";
 constexpr const char *S_HEIGHT = "height";
+constexpr const char *S_PRESENTATION_MODE = "presentation_mode";
+constexpr const char *S_CURRENT_PARAGRAPH = "current_paragraph";
 
 struct PrompterSource {
 	obs_source_t *source = nullptr;
@@ -97,7 +99,11 @@ void buildDocument(QTextDocument &doc, const PrompterSnapshot &state, int textWi
 	option.setWrapMode(QTextOption::WordWrap);
 	option.setAlignment(qtAlignment(state.align));
 	doc.setDefaultTextOption(option);
-	doc.setPlainText(QString::fromUtf8(state.text.empty() ? "Prompter vacio" : state.text.c_str()));
+	const std::string paragraph = state.mode == PresentationMode::Paragraph && !state.paragraphs.empty()
+					      ? state.paragraphs[std::clamp(state.currentParagraphIndex, 0,
+								     static_cast<int>(state.paragraphs.size()) - 1)]
+					      : state.text;
+	doc.setPlainText(QString::fromUtf8(paragraph.empty() ? "Prompter vacio" : paragraph.c_str()));
 	doc.setTextWidth(std::max(1, textWidth));
 
 	QTextCursor cursor(&doc);
@@ -122,7 +128,9 @@ void renderTexture(PrompterSource *ctx)
 	QTextDocument doc;
 	buildDocument(doc, state, textWidth);
 	const double contentHeight = doc.size().height() + padding * 2.0;
-	ctx->state->setMaxScroll(std::max(0.0, contentHeight - height));
+	ctx->state->setMaxScroll(state.mode == PresentationMode::ContinuousScroll
+					 ? std::max(0.0, contentHeight - height)
+					 : 0.0);
 
 	QImage image(width, height, QImage::Format_RGBA8888);
 	image.fill(Qt::transparent);
@@ -140,7 +148,10 @@ void renderTexture(PrompterSource *ctx)
 	}
 
 	painter.setClipRect(QRect(0, 0, width, height));
-	painter.translate(padding, padding - state.scroll);
+	const double y = state.mode == PresentationMode::Paragraph
+				 ? std::max<double>(padding, (height - doc.size().height()) / 2.0)
+				 : padding - state.scroll;
+	painter.translate(padding, y);
 	QAbstractTextDocumentLayout::PaintContext paintContext;
 	paintContext.palette.setColor(QPalette::Text, obsColor(state.textColor));
 	doc.documentLayout()->draw(&painter, paintContext);
@@ -158,9 +169,11 @@ void renderTexture(PrompterSource *ctx)
 	ctx->forceRender = false;
 
 	blog(LOG_INFO,
-	     "[Prompter Studio] textura actualizada text length=%zu scrollY=%.2f font=%d color=0x%08x speed=%.2f paused=%d size=%ux%u texture=%p",
-	     state.text.size(), state.scroll, state.fontSize, state.textColor, state.speed,
-	     state.paused ? 1 : 0, state.width, state.height, ctx->texture);
+	     "[Prompter Studio] textura actualizada mode=%d text length=%zu scrollY=%.2f paragraph=%d/%zu font=%d color=0x%08x speed=%.2f paused=%d size=%ux%u texture=%p",
+	     static_cast<int>(state.mode),
+	     state.text.size(), state.scroll, state.currentParagraphIndex + 1, state.paragraphs.size(),
+	     state.fontSize, state.textColor, state.speed, state.paused ? 1 : 0,
+	     state.width, state.height, ctx->texture);
 }
 
 bool loadTextFile(PrompterSource *ctx, const char *path)
@@ -207,6 +220,7 @@ bool reset_button(obs_properties_t *, obs_property_t *, void *data)
 	auto *ctx = static_cast<PrompterSource *>(data);
 	obs_data_t *settings = obs_source_get_settings(ctx->source);
 	obs_data_set_double(settings, "scroll", 0.0);
+	obs_data_set_int(settings, S_CURRENT_PARAGRAPH, 0);
 	obs_source_update(ctx->source, settings);
 	obs_data_release(settings);
 	return true;
@@ -265,7 +279,7 @@ void prompter_tick(void *data, float seconds)
 {
 	auto *ctx = static_cast<PrompterSource *>(data);
 	PrompterSnapshot state = ctx->state->snapshot();
-	if (!state.paused && state.speed > 0.0) {
+	if (state.mode == PresentationMode::ContinuousScroll && !state.paused && state.speed > 0.0) {
 		ctx->state->setScroll(state.scroll + state.speed * seconds);
 		ctx->forceRender = true;
 	}
@@ -321,6 +335,11 @@ obs_properties_t *prompter_properties(void *data)
 	obs_properties_add_color_alpha(props, S_TEXT_COLOR, "Color de texto");
 	obs_properties_add_color_alpha(props, S_BACKGROUND_COLOR, "Color de fondo");
 	obs_properties_add_int_slider(props, S_BACKGROUND_OPACITY, "Opacidad de fondo", 0, 255, 1);
+	obs_property_t *mode = obs_properties_add_list(props, S_PRESENTATION_MODE, "Modo de presentacion",
+							 OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
+	obs_property_list_add_int(mode, "Scroll continuo", static_cast<long long>(PresentationMode::ContinuousScroll));
+	obs_property_list_add_int(mode, "Por parrafos", static_cast<long long>(PresentationMode::Paragraph));
+	obs_properties_add_int(props, S_CURRENT_PARAGRAPH, "Parrafo actual", 0, 100000, 1);
 	obs_properties_add_float_slider(props, S_SPEED, "Velocidad de scroll", 0.0, 2000.0, 1.0);
 	obs_properties_add_bool(props, S_PAUSED, "Pausa/Reanudar");
 	obs_properties_add_button(props, "pause_button", "Pausar/Reanudar", pause_button);
@@ -354,6 +373,9 @@ void prompter_defaults(obs_data_t *settings)
 	obs_data_set_default_int(settings, S_ALIGN, static_cast<int>(PrompterAlign::Center));
 	obs_data_set_default_int(settings, S_PADDING, 40);
 	obs_data_set_default_double(settings, S_LINE_SPACING, 1.15);
+	obs_data_set_default_int(settings, S_PRESENTATION_MODE,
+				 static_cast<int>(PresentationMode::ContinuousScroll));
+	obs_data_set_default_int(settings, S_CURRENT_PARAGRAPH, 0);
 }
 } // namespace
 

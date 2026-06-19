@@ -17,6 +17,8 @@ obs_hotkey_id forward_id = OBS_INVALID_HOTKEY_ID;
 obs_hotkey_id backward_id = OBS_INVALID_HOTKEY_ID;
 obs_hotkey_id home_id = OBS_INVALID_HOTKEY_ID;
 obs_hotkey_id end_id = OBS_INVALID_HOTKEY_ID;
+obs_hotkey_id next_paragraph_id = OBS_INVALID_HOTKEY_ID;
+obs_hotkey_id previous_paragraph_id = OBS_INVALID_HOTKEY_ID;
 
 void withPressed(bool pressed, const char *name, void (*action)())
 {
@@ -81,6 +83,16 @@ void end_cb(void *, obs_hotkey_id, obs_hotkey_t *, bool pressed)
 	withPressed(pressed, "end", prompter_controller_go_to_end);
 }
 
+void next_paragraph_cb(void *, obs_hotkey_id, obs_hotkey_t *, bool pressed)
+{
+	withPressed(pressed, "next paragraph", prompter_controller_next_paragraph);
+}
+
+void previous_paragraph_cb(void *, obs_hotkey_id, obs_hotkey_t *, bool pressed)
+{
+	withPressed(pressed, "previous paragraph", prompter_controller_previous_paragraph);
+}
+
 void loadDefaultIfEmpty(obs_hotkey_id id, obs_key_t key, uint32_t modifiers)
 {
 	if (id == OBS_INVALID_HOTKEY_ID || key == OBS_KEY_NONE)
@@ -135,6 +147,12 @@ void prompter_hotkeys_register()
 					       "Prompter Studio: volver al inicio", home_cb, nullptr);
 	end_id = obs_hotkey_register_frontend("obs_prompter_studio.end",
 					     "Prompter Studio: ir al final", end_cb, nullptr);
+	next_paragraph_id = obs_hotkey_register_frontend("obs_prompter_studio.next_paragraph",
+							    "Prompter Studio: parrafo siguiente", next_paragraph_cb,
+							    nullptr);
+	previous_paragraph_id = obs_hotkey_register_frontend("obs_prompter_studio.previous_paragraph",
+								"Prompter Studio: parrafo anterior",
+								previous_paragraph_cb, nullptr);
 
 	const uint32_t ctrl_alt = INTERACT_CONTROL_KEY | INTERACT_ALT_KEY;
 	loadDefaultIfEmpty(start_id, OBS_KEY_P, ctrl_alt);
@@ -146,9 +164,11 @@ void prompter_hotkeys_register()
 	loadDefaultIfEmpty(backward_id, OBS_KEY_LEFT, ctrl_alt);
 	loadDefaultIfEmpty(home_id, OBS_KEY_HOME, ctrl_alt);
 	loadDefaultIfEmpty(end_id, OBS_KEY_END, ctrl_alt);
+	loadDefaultIfEmpty(next_paragraph_id, OBS_KEY_PAGEDOWN, ctrl_alt);
+	loadDefaultIfEmpty(previous_paragraph_id, OBS_KEY_PAGEUP, ctrl_alt);
 
 	blog(LOG_INFO,
-	     "[Prompter Studio] Suggested hotkeys: Start Ctrl+Alt+P, Toggle Ctrl+Alt+Space, Reset Ctrl+Alt+R, Speed Ctrl+Alt+Up/Down, Step Ctrl+Alt+Left/Right, Home/End Ctrl+Alt+Home/End");
+	     "[Prompter Studio] Suggested hotkeys: Start Ctrl+Alt+P, Toggle Ctrl+Alt+Space, Reset Ctrl+Alt+R, Speed Ctrl+Alt+Up/Down, Step Ctrl+Alt+Left/Right, Home/End Ctrl+Alt+Home/End, Paragraph Ctrl+Alt+PageUp/PageDown");
 }
 
 void prompter_hotkeys_unregister()
@@ -164,4 +184,6 @@ void prompter_hotkeys_unregister()
 	unregisterId(backward_id);
 	unregisterId(home_id);
 	unregisterId(end_id);
+	unregisterId(next_paragraph_id);
+	unregisterId(previous_paragraph_id);
 }

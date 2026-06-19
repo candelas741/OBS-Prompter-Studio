@@ -39,6 +39,7 @@
 #include <QVBoxLayout>
 #include <QWidget>
 #include <QShowEvent>
+#include <QStringList>
 
 #include <algorithm>
 #include <cstring>
@@ -64,6 +65,8 @@ constexpr const char *S_MIRROR_V = "mirror_vertical";
 constexpr const char *S_ALIGN = "align";
 constexpr const char *S_PADDING = "padding";
 constexpr const char *S_LINE_SPACING = "line_spacing";
+constexpr const char *S_PRESENTATION_MODE = "presentation_mode";
+constexpr const char *S_CURRENT_PARAGRAPH = "current_paragraph";
 
 struct DockPrompterState {
 	QString text;
@@ -82,6 +85,9 @@ struct DockPrompterState {
 	int align = static_cast<int>(PrompterAlign::Center);
 	int padding = 32;
 	double lineSpacing = 1.15;
+	PresentationMode mode = PresentationMode::ContinuousScroll;
+	QStringList paragraphs;
+	int currentParagraphIndex = 0;
 };
 
 DockPrompterState sharedState;
@@ -121,6 +127,8 @@ QJsonObject stateToJson(const DockPrompterState &state)
 	root["align"] = state.align;
 	root["padding"] = state.padding;
 	root["line_spacing"] = state.lineSpacing;
+	root["presentation_mode"] = static_cast<int>(state.mode);
+	root["current_paragraph"] = state.currentParagraphIndex;
 	return root;
 }
 
@@ -145,13 +153,56 @@ DockPrompterState stateFromJson(const QJsonObject &root, const DockPrompterState
 	state.align = root.value("align").toInt(state.align);
 	state.padding = root.value("padding").toInt(state.padding);
 	state.lineSpacing = root.value("line_spacing").toDouble(state.lineSpacing);
+	state.mode = static_cast<PresentationMode>(root.value("presentation_mode").toInt(
+		static_cast<int>(state.mode)));
+	state.currentParagraphIndex = root.value("current_paragraph").toInt(state.currentParagraphIndex);
 	state.scrollY = std::max(0.0, state.scrollY);
 	state.speed = std::clamp(state.speed, 0.0, 2000.0);
 	state.fontSize = std::clamp(state.fontSize, 8, 240);
 	state.backgroundOpacity = std::clamp(state.backgroundOpacity, 0, 255);
 	state.padding = std::clamp(state.padding, 0, 400);
 	state.lineSpacing = std::clamp(state.lineSpacing, 0.5, 3.0);
+	if (state.mode != PresentationMode::Paragraph)
+		state.mode = PresentationMode::ContinuousScroll;
 	return state;
+}
+
+void rebuildParagraphs(DockPrompterState &state)
+{
+	state.paragraphs.clear();
+	QStringList lines = state.text.split('\n');
+	QString paragraph;
+	for (QString line : lines) {
+		if (line.endsWith('\r'))
+			line.chop(1);
+		if (line.trimmed().isEmpty()) {
+			const QString cleaned = paragraph.trimmed();
+			if (!cleaned.isEmpty())
+				state.paragraphs.append(cleaned);
+			paragraph.clear();
+		} else {
+			if (!paragraph.isEmpty())
+				paragraph += '\n';
+			paragraph += line;
+		}
+	}
+	const QString cleaned = paragraph.trimmed();
+	if (!cleaned.isEmpty())
+		state.paragraphs.append(cleaned);
+	if (state.paragraphs.isEmpty())
+		state.currentParagraphIndex = 0;
+	else
+		state.currentParagraphIndex = std::clamp(state.currentParagraphIndex, 0,
+							  static_cast<int>(state.paragraphs.size()) - 1);
+	blog(LOG_INFO, "[Prompter Studio] Paragraphs rebuilt: %d", state.paragraphs.size());
+}
+
+QString currentParagraphText(const DockPrompterState &state)
+{
+	if (state.paragraphs.isEmpty())
+		return {};
+	return state.paragraphs.at(std::clamp(state.currentParagraphIndex, 0,
+						 static_cast<int>(state.paragraphs.size()) - 1));
 }
 
 QColor colorFromObs(uint32_t color, int alphaOverride = -1)
@@ -252,6 +303,7 @@ bool loadConfigNow()
 			     state.lastTxtPath.toUtf8().constData());
 		}
 	}
+	rebuildParagraphs(state);
 	setSharedState(state);
 	configLoaded = true;
 	return true;
@@ -325,6 +377,8 @@ void applyStateToSource(const DockPrompterState &state, bool scrollOnly = false)
 		obs_data_set_int(settings, S_ALIGN, state.align);
 		obs_data_set_int(settings, S_PADDING, state.padding);
 		obs_data_set_double(settings, S_LINE_SPACING, state.lineSpacing);
+		obs_data_set_int(settings, S_PRESENTATION_MODE, static_cast<int>(state.mode));
+		obs_data_set_int(settings, S_CURRENT_PARAGRAPH, state.currentParagraphIndex);
 	}
 	obs_data_set_double(settings, S_SCROLL, state.scrollY);
 	obs_source_update(source, settings);
@@ -383,7 +437,10 @@ protected:
 			painter.scale(state.mirrorH ? -1.0 : 1.0, state.mirrorV ? -1.0 : 1.0);
 		}
 		painter.setClipRect(QRect(0, 0, width, height));
-		painter.translate(padding, padding - state.scrollY);
+		const double y = state.mode == PresentationMode::Paragraph
+					 ? std::max<double>(padding, (height - doc.size().height()) / 2.0)
+					 : padding - state.scrollY;
+		painter.translate(padding, y);
 		QAbstractTextDocumentLayout::PaintContext context;
 		context.palette.setColor(QPalette::Text, colorFromObs(state.textColor));
 		doc.documentLayout()->draw(&painter, context);
@@ -401,7 +458,10 @@ private:
 		option.setWrapMode(QTextOption::WordWrap);
 		option.setAlignment(qtAlignment(state.align));
 		doc.setDefaultTextOption(option);
-		doc.setPlainText(state.text.isEmpty() ? "Prompter vacio" : state.text);
+		const QString text = state.mode == PresentationMode::Paragraph
+					     ? currentParagraphText(state)
+					     : state.text;
+		doc.setPlainText(text.isEmpty() ? "Prompter vacio" : text);
 		doc.setTextWidth(std::max(1, textWidth));
 
 		QTextCursor cursor(&doc);
@@ -521,6 +581,25 @@ public:
 		playGrid->addWidget(forward, 2, 1);
 		layout->addWidget(playGroup);
 
+		auto *modeGroup = new QGroupBox("Modo de presentacion", content);
+		auto *modeLayout = new QVBoxLayout(modeGroup);
+		presentationMode = new QComboBox(this);
+		presentationMode->addItem("Scroll continuo", static_cast<int>(PresentationMode::ContinuousScroll));
+		presentationMode->addItem("Por parrafos", static_cast<int>(PresentationMode::Paragraph));
+		paragraphStatus = new QLabel(this);
+		paragraphStatus->setWordWrap(true);
+		auto *paragraphGrid = new QGridLayout();
+		auto *previousParagraph = new QPushButton("Parrafo anterior", this);
+		auto *nextParagraph = new QPushButton("Parrafo siguiente", this);
+		previousParagraph->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+		nextParagraph->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+		paragraphGrid->addWidget(previousParagraph, 0, 0);
+		paragraphGrid->addWidget(nextParagraph, 0, 1);
+		modeLayout->addWidget(presentationMode);
+		modeLayout->addWidget(paragraphStatus);
+		modeLayout->addLayout(paragraphGrid);
+		layout->addWidget(modeGroup);
+
 		auto *settingsGroup = new QGroupBox("Ajustes", content);
 		auto *form = new QFormLayout(settingsGroup);
 		form->setRowWrapPolicy(QFormLayout::WrapAllRows);
@@ -588,7 +667,9 @@ public:
 			"Avanzar: Ctrl + Alt + →\n"
 			"Retroceder: Ctrl + Alt + ←\n"
 			"Inicio: Ctrl + Alt + Home\n"
-			"Final: Ctrl + Alt + End",
+			"Final: Ctrl + Alt + End\n"
+			"Parrafo anterior: Ctrl + Alt + PageUp\n"
+			"Parrafo siguiente: Ctrl + Alt + PageDown",
 			this);
 		hotkeyHelp->setWordWrap(true);
 		hotkeyHelp->setVisible(false);
@@ -618,17 +699,42 @@ public:
 			mutateAndApply([](DockPrompterState &state) { state.paused = true; });
 		});
 		connect(reset, &QPushButton::clicked, this, [this]() {
-			mutateAndApply([](DockPrompterState &state) { state.scrollY = 0.0; });
+			mutateAndApply([](DockPrompterState &state) {
+				if (state.mode == PresentationMode::Paragraph)
+					state.currentParagraphIndex = 0;
+				else
+					state.scrollY = 0.0;
+			});
 		});
 		connect(back, &QPushButton::clicked, this, [this]() {
 			mutateAndApply([](DockPrompterState &state) {
-				state.scrollY = std::max(0.0, state.scrollY - 100.0);
+				if (state.mode == PresentationMode::Paragraph)
+					state.currentParagraphIndex--;
+				else
+					state.scrollY = std::max(0.0, state.scrollY - 100.0);
 			});
 		});
 		connect(forward, &QPushButton::clicked, this, [this]() {
 			mutateAndApply([](DockPrompterState &state) {
-				state.scrollY = std::min(state.maxScroll, state.scrollY + 100.0);
+				if (state.mode == PresentationMode::Paragraph)
+					state.currentParagraphIndex++;
+				else
+					state.scrollY = std::min(state.maxScroll, state.scrollY + 100.0);
 			});
+		});
+		connect(previousParagraph, &QPushButton::clicked, this, [this]() {
+			mutateAndApply([](DockPrompterState &state) { state.currentParagraphIndex--; });
+		});
+		connect(nextParagraph, &QPushButton::clicked, this, [this]() {
+			mutateAndApply([](DockPrompterState &state) { state.currentParagraphIndex++; });
+		});
+		connect(presentationMode, qOverload<int>(&QComboBox::currentIndexChanged), this, [this](int) {
+			if (!syncing)
+				mutateAndApply([this](DockPrompterState &state) {
+					state.mode = static_cast<PresentationMode>(presentationMode->currentData().toInt());
+					blog(LOG_INFO, "[Prompter Studio] Presentation mode changed: %s",
+					     state.mode == PresentationMode::Paragraph ? "Paragraph" : "ContinuousScroll");
+				});
 		});
 		connect(speed, qOverload<double>(&QDoubleSpinBox::valueChanged), this, [this](double value) {
 			if (!syncing)
@@ -718,8 +824,10 @@ private:
 	{
 		DockPrompterState state = getSharedState();
 		mutate(state);
+		rebuildParagraphs(state);
 		state.maxScroll = privateView ? privateView->maxScroll() : state.maxScroll;
-		state.scrollY = std::clamp(state.scrollY, 0.0, state.maxScroll);
+		if (state.mode == PresentationMode::ContinuousScroll)
+			state.scrollY = std::clamp(state.scrollY, 0.0, state.maxScroll);
 		setSharedState(state);
 		if (privateView)
 			privateView->refresh();
@@ -771,6 +879,8 @@ private:
 			state.align = static_cast<int>(obs_data_get_int(settings, S_ALIGN));
 			state.padding = static_cast<int>(obs_data_get_int(settings, S_PADDING));
 			state.lineSpacing = obs_data_get_double(settings, S_LINE_SPACING);
+			state.mode = static_cast<PresentationMode>(obs_data_get_int(settings, S_PRESENTATION_MODE));
+			state.currentParagraphIndex = static_cast<int>(obs_data_get_int(settings, S_CURRENT_PARAGRAPH));
 			obs_data_release(settings);
 			obs_source_release(source);
 		}
@@ -780,8 +890,12 @@ private:
 			state.fontSize = 48;
 		if (state.lineSpacing <= 0.0)
 			state.lineSpacing = 1.15;
+		if (state.mode != PresentationMode::Paragraph)
+			state.mode = PresentationMode::ContinuousScroll;
+		rebuildParagraphs(state);
 		state.maxScroll = privateView ? privateView->maxScroll() : state.maxScroll;
-		state.scrollY = std::clamp(state.scrollY, 0.0, state.maxScroll);
+		if (state.mode == PresentationMode::ContinuousScroll)
+			state.scrollY = std::clamp(state.scrollY, 0.0, state.maxScroll);
 		setSharedState(state);
 		if (privateView)
 			privateView->refresh();
@@ -797,14 +911,24 @@ private:
 			editor->setPlainText(state.text);
 		speed->setValue(state.speed);
 		fontSize->setValue(state.fontSize);
+		presentationMode->setCurrentIndex(presentationMode->findData(static_cast<int>(state.mode)));
 		backgroundOpacity->setValue(state.backgroundOpacity);
 		mirrorH->setChecked(state.mirrorH);
 		mirrorV->setChecked(state.mirrorV);
 		setColorButton(textColor, state.textColor);
 		setColorButton(backgroundColor, state.backgroundColor);
-		status->setText(QString("Scroll: %1 / %2\nVelocidad: %3 | %4")
-					.arg(state.scrollY, 0, 'f', 0)
-					.arg(state.maxScroll, 0, 'f', 0)
+		paragraphStatus->setText(QString("Parrafo: %1 / %2")
+						 .arg(state.paragraphs.isEmpty() ? 0 : state.currentParagraphIndex + 1)
+						 .arg(state.paragraphs.size()));
+		const QString position = state.mode == PresentationMode::Paragraph
+						 ? QString("Parrafo: %1 / %2")
+							   .arg(state.paragraphs.isEmpty() ? 0 : state.currentParagraphIndex + 1)
+							   .arg(state.paragraphs.size())
+						 : QString("Scroll: %1 / %2")
+							   .arg(state.scrollY, 0, 'f', 0)
+							   .arg(state.maxScroll, 0, 'f', 0);
+		status->setText(QString("%1\nVelocidad: %2 | %3")
+					.arg(position)
 					.arg(state.speed, 0, 'f', 0)
 					.arg(state.paused ? "Pausado" : "Reproduciendo"));
 		syncing = false;
@@ -816,7 +940,7 @@ private:
 		const double seconds = static_cast<double>(elapsedMs) / 1000.0;
 		DockPrompterState state = getSharedState();
 		state.maxScroll = privateView ? privateView->maxScroll() : state.maxScroll;
-		if (!state.paused)
+		if (state.mode == PresentationMode::ContinuousScroll && !state.paused)
 			state.scrollY = std::min(state.maxScroll, state.scrollY + state.speed * seconds);
 		setSharedState(state);
 		if (privateView)
@@ -867,11 +991,13 @@ private:
 	QPlainTextEdit *editor = nullptr;
 	QDoubleSpinBox *speed = nullptr;
 	QSpinBox *fontSize = nullptr;
+	QComboBox *presentationMode = nullptr;
 	QPushButton *textColor = nullptr;
 	QPushButton *backgroundColor = nullptr;
 	QSpinBox *backgroundOpacity = nullptr;
 	QCheckBox *mirrorH = nullptr;
 	QCheckBox *mirrorV = nullptr;
+	QLabel *paragraphStatus = nullptr;
 	QLabel *status = nullptr;
 	QElapsedTimer tickClock;
 	uint64_t tickLogCounter = 0;
@@ -897,8 +1023,10 @@ void runControllerAction(const char *name, const std::function<void(DockPrompter
 	auto run = [name, mutate, scrollOnly]() {
 		DockPrompterState state = getSharedState();
 		mutate(state);
+		rebuildParagraphs(state);
 		state.maxScroll = privateView ? privateView->maxScroll() : state.maxScroll;
-		state.scrollY = std::clamp(state.scrollY, 0.0, state.maxScroll);
+		if (state.mode == PresentationMode::ContinuousScroll)
+			state.scrollY = std::clamp(state.scrollY, 0.0, state.maxScroll);
 		setSharedState(state);
 		if (privateView)
 			privateView->refresh();
@@ -971,7 +1099,12 @@ void prompter_controller_toggle_pause()
 
 void prompter_controller_reset()
 {
-	runControllerAction("reset", [](DockPrompterState &state) { state.scrollY = 0.0; });
+	runControllerAction("reset", [](DockPrompterState &state) {
+		if (state.mode == PresentationMode::Paragraph)
+			state.currentParagraphIndex = 0;
+		else
+			state.scrollY = 0.0;
+	});
 }
 
 void prompter_controller_increase_speed()
@@ -991,23 +1124,49 @@ void prompter_controller_decrease_speed()
 void prompter_controller_step_forward()
 {
 	runControllerAction("forward", [](DockPrompterState &state) {
-		state.scrollY = std::min(state.maxScroll, state.scrollY + 100.0);
+		if (state.mode == PresentationMode::Paragraph)
+			state.currentParagraphIndex++;
+		else
+			state.scrollY = std::min(state.maxScroll, state.scrollY + 100.0);
 	});
 }
 
 void prompter_controller_step_backward()
 {
 	runControllerAction("backward", [](DockPrompterState &state) {
-		state.scrollY = std::max(0.0, state.scrollY - 100.0);
+		if (state.mode == PresentationMode::Paragraph)
+			state.currentParagraphIndex--;
+		else
+			state.scrollY = std::max(0.0, state.scrollY - 100.0);
 	});
 }
 
 void prompter_controller_go_to_start()
 {
-	runControllerAction("home", [](DockPrompterState &state) { state.scrollY = 0.0; });
+	runControllerAction("home", [](DockPrompterState &state) {
+		if (state.mode == PresentationMode::Paragraph)
+			state.currentParagraphIndex = 0;
+		else
+			state.scrollY = 0.0;
+	});
 }
 
 void prompter_controller_go_to_end()
 {
-	runControllerAction("end", [](DockPrompterState &state) { state.scrollY = state.maxScroll; });
+	runControllerAction("end", [](DockPrompterState &state) {
+		if (state.mode == PresentationMode::Paragraph)
+			state.currentParagraphIndex = state.paragraphs.size() - 1;
+		else
+			state.scrollY = state.maxScroll;
+	});
+}
+
+void prompter_controller_next_paragraph()
+{
+	runControllerAction("next paragraph", [](DockPrompterState &state) { state.currentParagraphIndex++; });
+}
+
+void prompter_controller_previous_paragraph()
+{
+	runControllerAction("previous paragraph", [](DockPrompterState &state) { state.currentParagraphIndex--; });
 }

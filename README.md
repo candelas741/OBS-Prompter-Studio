@@ -15,6 +15,7 @@ The plugin is independent from PowerPoint and does not require Microsoft Office.
 - Native OBS source: move, resize, crop, hide, lock and transform it like any other source.
 - Transparent or colored background.
 - Smooth vertical scrolling.
+- Presentation modes: continuous scroll or manual paragraphs separated by blank lines.
 - Private dock preview for the operator.
 - Text editor with `.txt` load/save.
 - Font size, text color, background color and opacity controls.
@@ -49,6 +50,8 @@ The plugin registers these OBS hotkeys:
 - Prompter Studio: retroceder
 - Prompter Studio: volver al inicio
 - Prompter Studio: ir al final
+- Prompter Studio: parrafo siguiente
+- Prompter Studio: parrafo anterior
 
 Configure them in:
 
@@ -67,6 +70,12 @@ Suggested assignments:
 - Backward: `Ctrl + Alt + Left`
 - Go to start: `Ctrl + Alt + Home`
 - Go to end: `Ctrl + Alt + End`
+- Previous paragraph: `Ctrl + Alt + PageUp`
+- Next paragraph: `Ctrl + Alt + PageDown`
+
+## Paragraph Mode
+
+Choose `Por parrafos` in Prompter Studio Control to read a script one block at a time. Paragraphs are separated by blank lines. In this mode there is no automatic vertical movement: `Avanzar`, `Retroceder`, Home and End move between paragraphs instead. It is useful for speeches, interviews, educational segments and presentations that need deliberate manual pacing.
 
 ## Configuration Persistence
 
@@ -76,7 +85,7 @@ The dock state is saved automatically to the OBS module configuration directory 
 prompter_config.json
 ```
 
-The saved state includes text, last TXT file path, selected source, colors, background opacity, font size, scroll position, speed and mirror settings.
+The saved state includes text, last TXT file path, selected source, colors, background opacity, font size, scroll position, speed, mirror settings, presentation mode and current paragraph.
 
 `Prompter Source` settings are also saved in OBS scene/source settings.
 
