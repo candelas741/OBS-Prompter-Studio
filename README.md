@@ -1,4 +1,4 @@
-# OBS Prompter Studio
+# Prompter Studio
 
 OBS Prompter Studio is a native OBS Studio plugin for Windows that adds a professional teleprompter workflow directly inside OBS.
 
