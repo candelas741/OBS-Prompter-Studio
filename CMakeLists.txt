@@ -42,6 +42,8 @@ target_sources(
     src/prompter-dock.hpp
     src/prompter-hotkeys.cpp
     src/prompter-hotkeys.hpp
+    src/prompter-xbox.cpp
+    src/prompter-xbox.hpp
 )
 
 set_target_properties_plugin(${CMAKE_PROJECT_NAME} PROPERTIES OUTPUT_NAME ${_name})

@@ -22,6 +22,7 @@ The plugin is independent from PowerPoint and does not require Microsoft Office.
 - Horizontal and vertical mirror modes.
 - Manual controls: start, pause, reset, forward and backward.
 - OBS frontend hotkeys.
+- Optional Xbox controller support on Windows through XInput.
 - Automatic configuration persistence across OBS restarts.
 - Portable ZIP packaging and Inno Setup installer scripts.
 
@@ -73,6 +74,15 @@ Suggested assignments:
 - Previous paragraph: `Ctrl + Alt + PageUp`
 - Next paragraph: `Ctrl + Alt + PageDown`
 
+## Xbox Controller
+
+On Windows, enable `Activar control Xbox` in Prompter Studio Control to use an XInput-compatible Xbox controller. The trigger threshold and debounce can be adjusted and are saved with the plugin configuration.
+
+- Right Trigger (RT): advance manually, or show the next paragraph in `Por parrafos` mode.
+- Left Trigger (LT): move back manually, or show the previous paragraph in `Por parrafos` mode.
+
+Each trigger action uses edge detection and a 250 ms default debounce, so holding a trigger does not skip multiple paragraphs.
+
 ## Paragraph Mode
 
 Choose `Por parrafos` in Prompter Studio Control to read a script one block at a time. Paragraphs are separated by blank lines. In this mode there is no automatic vertical movement: `Avanzar`, `Retroceder`, Home and End move between paragraphs instead. It is useful for speeches, interviews, educational segments and presentations that need deliberate manual pacing.
@@ -85,7 +95,7 @@ The dock state is saved automatically to the OBS module configuration directory 
 prompter_config.json
 ```
 
-The saved state includes text, last TXT file path, selected source, colors, background opacity, font size, scroll position, speed, mirror settings, presentation mode and current paragraph.
+The saved state includes text, last TXT file path, selected source, colors, background opacity, font size, scroll position, speed, mirror settings, presentation mode, current paragraph, Xbox control enablement, trigger threshold and debounce.
 
 `Prompter Source` settings are also saved in OBS scene/source settings.
 

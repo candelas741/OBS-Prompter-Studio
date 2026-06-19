@@ -1,6 +1,7 @@
 #include "prompter-dock.hpp"
 
 #include "prompter-state.hpp"
+#include "prompter-xbox.hpp"
 
 #include <obs-frontend-api.h>
 #include <obs-module.h>
@@ -88,6 +89,9 @@ struct DockPrompterState {
 	PresentationMode mode = PresentationMode::ContinuousScroll;
 	QStringList paragraphs;
 	int currentParagraphIndex = 0;
+	bool xboxControlEnabled = false;
+	double triggerThreshold = 0.55;
+	int triggerDebounceMs = 250;
 };
 
 DockPrompterState sharedState;
@@ -129,6 +133,9 @@ QJsonObject stateToJson(const DockPrompterState &state)
 	root["line_spacing"] = state.lineSpacing;
 	root["presentation_mode"] = static_cast<int>(state.mode);
 	root["current_paragraph"] = state.currentParagraphIndex;
+	root["xbox_control_enabled"] = state.xboxControlEnabled;
+	root["trigger_threshold"] = state.triggerThreshold;
+	root["trigger_debounce_ms"] = state.triggerDebounceMs;
 	return root;
 }
 
@@ -156,12 +163,17 @@ DockPrompterState stateFromJson(const QJsonObject &root, const DockPrompterState
 	state.mode = static_cast<PresentationMode>(root.value("presentation_mode").toInt(
 		static_cast<int>(state.mode)));
 	state.currentParagraphIndex = root.value("current_paragraph").toInt(state.currentParagraphIndex);
+	state.xboxControlEnabled = root.value("xbox_control_enabled").toBool(state.xboxControlEnabled);
+	state.triggerThreshold = root.value("trigger_threshold").toDouble(state.triggerThreshold);
+	state.triggerDebounceMs = root.value("trigger_debounce_ms").toInt(state.triggerDebounceMs);
 	state.scrollY = std::max(0.0, state.scrollY);
 	state.speed = std::clamp(state.speed, 0.0, 2000.0);
 	state.fontSize = std::clamp(state.fontSize, 8, 240);
 	state.backgroundOpacity = std::clamp(state.backgroundOpacity, 0, 255);
 	state.padding = std::clamp(state.padding, 0, 400);
 	state.lineSpacing = std::clamp(state.lineSpacing, 0.5, 3.0);
+	state.triggerThreshold = std::clamp(state.triggerThreshold, 0.1, 1.0);
+	state.triggerDebounceMs = std::clamp(state.triggerDebounceMs, 50, 2000);
 	if (state.mode != PresentationMode::Paragraph)
 		state.mode = PresentationMode::ContinuousScroll;
 	return state;
@@ -631,6 +643,25 @@ public:
 		form->addRow("", mirrorV);
 		layout->addWidget(settingsGroup);
 
+		auto *xboxGroup = new QGroupBox("Control Xbox", content);
+		auto *xboxForm = new QFormLayout(xboxGroup);
+		xboxForm->setRowWrapPolicy(QFormLayout::WrapAllRows);
+		xboxControlEnabled = new QCheckBox("Activar control Xbox", this);
+		triggerThreshold = new QDoubleSpinBox(this);
+		triggerThreshold->setRange(0.1, 1.0);
+		triggerThreshold->setSingleStep(0.05);
+		triggerThreshold->setDecimals(2);
+		triggerDebounceMs = new QSpinBox(this);
+		triggerDebounceMs->setRange(50, 2000);
+		triggerDebounceMs->setSingleStep(50);
+		xboxStatus = new QLabel("Mando Xbox: desactivado", this);
+		xboxStatus->setWordWrap(true);
+		xboxForm->addRow("", xboxControlEnabled);
+		xboxForm->addRow("Umbral de gatillo", triggerThreshold);
+		xboxForm->addRow("Debounce (ms)", triggerDebounceMs);
+		xboxForm->addRow("", xboxStatus);
+		layout->addWidget(xboxGroup);
+
 		auto *statusGroup = new QGroupBox("Estado", content);
 		auto *statusLayout = new QVBoxLayout(statusGroup);
 		status = new QLabel(this);
@@ -782,6 +813,25 @@ public:
 					state.mirrorV = checked;
 				});
 		});
+		connect(xboxControlEnabled, &QCheckBox::toggled, this, [this](bool checked) {
+			if (!syncing)
+				mutateAndApply([checked](DockPrompterState &state) {
+					state.xboxControlEnabled = checked;
+				});
+		});
+		connect(triggerThreshold, qOverload<double>(&QDoubleSpinBox::valueChanged), this,
+			[this](double value) {
+				if (!syncing)
+					mutateAndApply([value](DockPrompterState &state) {
+						state.triggerThreshold = value;
+					});
+			});
+		connect(triggerDebounceMs, qOverload<int>(&QSpinBox::valueChanged), this, [this](int value) {
+			if (!syncing)
+				mutateAndApply([value](DockPrompterState &state) {
+					state.triggerDebounceMs = value;
+				});
+		});
 		connect(saveConfig, &QPushButton::clicked, this, [this]() {
 			status->setText(saveConfigNow() ? "Configuracion guardada" :
 						       "Error al guardar configuracion");
@@ -802,6 +852,10 @@ public:
 		configSaveTimer = new QTimer(this);
 		configSaveTimer->setSingleShot(true);
 		connect(configSaveTimer, &QTimer::timeout, this, []() { saveConfigNow(); });
+		xboxController = new XboxController([this](bool connected) {
+			xboxConnected = connected;
+			updateXboxStatus();
+		});
 
 		tickClock.start();
 		auto *timer = new QTimer(this);
@@ -810,6 +864,11 @@ public:
 
 		refreshSources();
 		syncControlsFromState();
+	}
+
+	~PrompterControlDock() override
+	{
+		delete xboxController;
 	}
 
 protected:
@@ -915,6 +974,15 @@ private:
 		backgroundOpacity->setValue(state.backgroundOpacity);
 		mirrorH->setChecked(state.mirrorH);
 		mirrorV->setChecked(state.mirrorV);
+		xboxControlEnabled->setChecked(state.xboxControlEnabled);
+		triggerThreshold->setValue(state.triggerThreshold);
+		triggerDebounceMs->setValue(state.triggerDebounceMs);
+		if (xboxController) {
+			xboxController->setTriggerThreshold(state.triggerThreshold);
+			xboxController->setDebounceMs(state.triggerDebounceMs);
+			xboxController->setEnabled(state.xboxControlEnabled);
+		}
+		updateXboxStatus();
 		setColorButton(textColor, state.textColor);
 		setColorButton(backgroundColor, state.backgroundColor);
 		paragraphStatus->setText(QString("Parrafo: %1 / %2")
@@ -932,6 +1000,18 @@ private:
 					.arg(state.speed, 0, 'f', 0)
 					.arg(state.paused ? "Pausado" : "Reproduciendo"));
 		syncing = false;
+	}
+
+	void updateXboxStatus()
+	{
+		if (!xboxStatus)
+			return;
+		const DockPrompterState state = getSharedState();
+		if (!state.xboxControlEnabled)
+			xboxStatus->setText("Mando Xbox: desactivado");
+		else
+			xboxStatus->setText(xboxConnected ? "Mando Xbox: conectado" :
+						      "Mando Xbox: no conectado");
 	}
 
 	void onTick()
@@ -997,11 +1077,17 @@ private:
 	QSpinBox *backgroundOpacity = nullptr;
 	QCheckBox *mirrorH = nullptr;
 	QCheckBox *mirrorV = nullptr;
+	QCheckBox *xboxControlEnabled = nullptr;
+	QDoubleSpinBox *triggerThreshold = nullptr;
+	QSpinBox *triggerDebounceMs = nullptr;
+	QLabel *xboxStatus = nullptr;
 	QLabel *paragraphStatus = nullptr;
 	QLabel *status = nullptr;
 	QElapsedTimer tickClock;
 	uint64_t tickLogCounter = 0;
 	bool syncing = false;
+	bool xboxConnected = false;
+	XboxController *xboxController = nullptr;
 };
 
 void registerDock(const char *id, const char *title, QWidget *widget)
